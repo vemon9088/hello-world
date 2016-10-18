@@ -1,0 +1,156 @@
+
+  1. For the original code, the logic of function stringFromPreOrder() is using pre order traversal and translate the DomNode to a string. Then use function isSubtree() to determine the string of vdom is the subset of string of dom: if yes, which means vdom is a subtree of dom.
+  But this algorithm has a fatal problem: the string of DomNode could not present the structure of DomNode object. For example: function stringFromPreOrder(vdom), the result is string 'acghdi', this string could not represent the unique DomNode tree of vdom, several DomNode trees have the same string result of 'acghdi'. In other words, based on the output of function stringFromPreOrder(), we could draw several DomNode trees meet the rules.
+  e.g. stringFromPreOrder(vdom) is 'acghdi'. However, the following DomNode objects below have the same string with vdom.
+  const vdom_2: DomNode = {
+	value: "a",
+	left: {
+		value: "c",
+		left: {
+			value: "g"
+		},
+		right: {
+			value: "h"
+		}
+	},
+	right: {
+		value: "d",
+		right: { //vdom is 'left'
+			value: "i"
+		}
+	}
+}
+const vdom_3: DomNode = {
+	value: "a",
+	left: {
+		value: "c",
+		left: {
+			value: "g"
+		},
+		right: {
+			value: "h"
+		}
+	},
+	left: { //vdom is 'right'
+		value: "d",
+		left: {
+			value: "i"
+		}
+	}
+}
+const vdom_4: DomNode = {
+	value: "a",
+	left: {
+		value: "c",
+		left: {
+			value: "g"
+		},
+		right: {
+			value: "h"
+		}
+	},
+	left: { // vdom is 'right'
+		value: "d",
+		right: {// vdom is 'left'
+			value: "i"
+		}
+	}
+}
+const vdom_5: DomNode = {
+	value: "a",
+	left: {
+		value: "c",
+		left: {
+			value: "g"
+		},
+		right: {
+			value: "h",// in vdom, node "h" has no sub node.
+      left: {
+        value: "d"
+      },
+      right: {
+        value: "i",
+      }
+		}
+	},
+}
+
+  2. For my own perspective, if an algorithm not works, the best way is modifying the code as few as possible, because this is teammate's effort, start over is not a good way unless the current algorithm is incurable. 
+  So my thinking is : keeping the logic of comparing two tree-transfer string and if vdom's string is the substring of dom's, vdom is subtree of dom. Just update function stringFromPreOrder(), to make sure the output string could unique just one DomNode tree. Which means, one string could only restore the unique DomNode instance.
+  My updated function stringFromPreOrder() shows below:
+function stringFromPreOrder(tree: DomNode): string {
+    if (!tree) {
+        return "";
+    }
+		var result = tree.value;
+    result += tree.left != null ? stringFromPreOrder(tree.left) : 0;
+    result += tree.right != null ? stringFromPreOrder(tree.right) : 0;
+    return result;
+    
+}
+The new function set the new rule that every DomNode object should ouputs its all three props (value, left, right) in the return string, if the node has no left subnode or right subnode, use integer "0" instead. According to the new function, vdom's string: v_string is "acg00h00di000", and dom's string dom_string is "rootacg00h00di000be0jk00l00f00". Then set two string as parameters in isSubtree(dom_string, v_string), return "true" still. Hence vdom is truly a subtree of dom.
+
+  3. For the test cases, normally I conclude in 3 types: first is either dom or vdom is null or both null; second is keeping dom unchanged, and modify vdom, like the vdom_2, vdom_3, vdom_4, vdom_5 and so on, which passed the original test, but all failed to the updated one shows in question 2; the last test type is try to redefine dom and vdom with the same DomNode structure, to see whether the result is true or not.
+  
+  4. For the k-ary tree, my thought is similar to the binary tree scenario, use a string to represent a DomNode object and compare two string to see whether vdom's string is a substring of dom's one. I update the function stringFromPreOrder(), which I add a loop repeating the recursion for k times. The only requirement is need to know all children names in the DomNode interface. Such as for the current DomNode, it has two children [left, right]. Extend to the k-ary DomNode, suppose its children array is k_array = [k1, k2, ... kk]. 
+interface kNode {
+    value: string;
+    k1?: kNode;
+    k2?: kNode;
+    ...
+    kk?: kNode;
+} 
+  
+So the updated function stringFromPreOrder() shows below:
+  function stringFromPreOrder(tree: kNode): string {
+    if (!tree) {
+        return "";
+    }
+		let result = tree.value;
+    for (let i in k_array) {
+    	result += i in tree ? stringFromPreOrder(tree[i]) : 0;
+      
+    }
+    return result;
+  }
+  
+  5. The best way to avoid constructing and comparison with strings is dealing with DomNode comparison directly. So first function I created is to compare two DomNode objects are the same or not:
+function isTheSame(dom: DomNode, vdom: DomNode): boolean{
+	if (dom == null && vdom == null) {
+  		return true;
+  }
+  if (dom == null || vdom == null) {
+  		return false;
+  }
+  let result = dom.value == vdom.value;
+  for (let i in k_array) {
+  	result = result && isTheSame(dom[i], vdom[i]);
+  }
+  return result;
+}
+
+So right now we could determine two DomNode is the same or not, the last step is to find whether vdom is the subtree of dom:
+function k_ray_isSubtree(dom: DomNode, vdom: DomNode): boolean{
+	if (dom == null) {
+  	return false;
+  }
+  if (vdom == null) {
+  	return true;
+  }
+  
+  if (isTheSame(dom, vdom)) {
+  	return true;
+  }
+  
+  let result = false;
+  for (let i in k_array) {
+    result = result || k_ray_isSubtree(dom[i], vdom);
+  }
+  return result;
+}
+Based on my algorithm, time Complexity is O(mn) where m and n are number of nodes in given two trees, but it will save precious memory to run the algorithm.
+
+
+Supplementary:
+ 1. After finishing all the questions, I need to say: use string to represent a DomNode object is not a really good idea, because if there is no sign or space between every DomNode's value, it is easy to cause ambiguity, such as "abcd", we could not make sure it is made from "a b c d" or "ab cd" or "abc d" or other situations. So maybe use an array instead of string might be a better idea, each value is pushed as an element. But I saw all questions above are all based on "string construction and comparation", so I have not change the string to array in my answers.
+
